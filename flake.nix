@@ -8,6 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-utils.url = "github:numtide/flake-utils";
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -15,6 +16,7 @@
       nixpkgs,
       rust-overlay,
       flake-utils,
+      crane,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -33,10 +35,7 @@
           ];
           targets = [ "wasm32-unknown-unknown" ];
         };
-        rustPlatform = pkgs.makeRustPlatform {
-          cargo = toolchain;
-          rustc = toolchain;
-        };
+        craneLib = (crane.mkLib pkgs).overrideToolchain (_: toolchain);
 
         cargoToml = lib.importTOML ./Cargo.toml;
         pname = cargoToml.package.name;
@@ -77,49 +76,63 @@
           ]
         );
 
-        native = rustPlatform.buildRustPackage {
+        # Each target builds its dependencies once (`*Deps`); its package and clippy
+        # check reuse them, so Bevy isn't compiled again for every derivation.
+        nativeArgs = {
           inherit pname version src;
-          cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = [
-            pkgs.pkg-config
-          ]
-          ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.makeWrapper ];
-          buildInputs = buildLibs ++ runtimeLibs;
+          strictDeps = true;
           doCheck = false;
-          postFixup = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
-            wrapProgram $out/bin/${pname} \
-              --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath runtimeLibs}
-          '';
-          meta.mainProgram = pname;
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = buildLibs ++ runtimeLibs;
         };
+        nativeDeps = craneLib.buildDepsOnly nativeArgs;
 
-        wasm = rustPlatform.buildRustPackage {
+        wasmArgs = {
           pname = "${pname}-wasm";
           inherit version src;
-          cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = [
-            wasm-bindgen-cli
-            pkgs.binaryen
-          ];
+          strictDeps = true;
           doCheck = false;
-          buildPhase = ''
-            runHook preBuild
-            cargo build --profile wasm-release --frozen --target wasm32-unknown-unknown
-            runHook postBuild
-          '';
-          installPhase = ''
-            runHook preInstall
-            mkdir -p $out
-            wasm-bindgen --target web --no-typescript \
-              --out-dir $out --out-name ${pname} \
-              target/wasm32-unknown-unknown/wasm-release/${pname}.wasm
-            wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int \
-              -o $out/${pname}_bg.wasm $out/${pname}_bg.wasm
-            cp web/index.html $out/
-            runHook postInstall
-          '';
-          dontFixup = true;
+          CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
+          CARGO_PROFILE = "wasm-release";
         };
+        wasmDeps = craneLib.buildDepsOnly wasmArgs;
+
+        native = craneLib.buildPackage (
+          nativeArgs
+          // {
+            cargoArtifacts = nativeDeps;
+            nativeBuildInputs =
+              nativeArgs.nativeBuildInputs ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.makeWrapper ];
+            postFixup = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+              wrapProgram $out/bin/${pname} \
+                --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath runtimeLibs}
+            '';
+            meta.mainProgram = pname;
+          }
+        );
+
+        wasm = craneLib.mkCargoDerivation (
+          wasmArgs
+          // {
+            cargoArtifacts = wasmDeps;
+            doInstallCargoArtifacts = false;
+            nativeBuildInputs = [
+              wasm-bindgen-cli
+              pkgs.binaryen
+            ];
+            buildPhaseCargoCommand = "cargoWithProfile build --locked";
+            installPhaseCommand = ''
+              mkdir -p $out
+              wasm-bindgen --target web --no-typescript \
+                --out-dir $out --out-name ${pname} \
+                target/wasm32-unknown-unknown/wasm-release/${pname}.wasm
+              wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int \
+                -o $out/${pname}_bg.wasm $out/${pname}_bg.wasm
+              cp web/index.html $out/
+            '';
+            dontFixup = true;
+          }
+        );
 
         # Dev shell only: `cargo run` becomes an optimized build with quick incremental
         # rebuilds (the `release-dev` profile). Other cargo commands pass through.
@@ -131,24 +144,16 @@
           exec ${toolchain}/bin/cargo "$@"
         '';
 
-        # `cargo clippy` for one target, failing on any warning. Builds nothing but a marker file.
+        # `cargo clippy` for one target, failing on any warning.
         clippy =
-          name: targetArgs: extraBuildInputs:
-          rustPlatform.buildRustPackage {
-            pname = "${pname}-clippy-${name}";
-            inherit version src;
-            cargoLock.lockFile = ./Cargo.lock;
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            buildInputs = extraBuildInputs;
-            doCheck = false;
-            buildPhase = ''
-              runHook preBuild
-              cargo clippy --frozen --all-targets ${targetArgs} -- -D warnings
-              runHook postBuild
-            '';
-            installPhase = "touch $out";
-            dontFixup = true;
-          };
+          args: deps:
+          craneLib.cargoClippy (
+            args
+            // {
+              cargoArtifacts = deps;
+              cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+            }
+          );
 
         # Lint a Nix file with a tool that exits non-zero on problems.
         nixLint =
@@ -157,13 +162,6 @@
             ${command} ${./flake.nix}
             touch $out
           '';
-
-        # `cargo fmt --check`, using the toolchain's rustfmt so it agrees with the dev shell.
-        # rustfmt follows `mod` declarations from the crate root.
-        fmt = pkgs.runCommand "${pname}-fmt" { nativeBuildInputs = [ toolchain ]; } ''
-          rustfmt --check --edition 2024 ${src}/src/main.rs
-          touch $out
-        '';
 
         # `nix run .#serve-wasm` serves the wasm build on http://localhost:8080
         serve-wasm = pkgs.writeShellApplication {
@@ -187,9 +185,9 @@
         };
 
         checks = {
-          inherit fmt;
-          clippy-native = clippy "native" "" (buildLibs ++ runtimeLibs);
-          clippy-wasm = clippy "wasm" "--target wasm32-unknown-unknown" [ ];
+          fmt = craneLib.cargoFmt { inherit pname version src; };
+          clippy-native = clippy nativeArgs nativeDeps;
+          clippy-wasm = clippy wasmArgs wasmDeps;
           nixfmt = nixLint "nixfmt" pkgs.nixfmt "nixfmt --check";
           deadnix = nixLint "deadnix" pkgs.deadnix "deadnix --fail";
         };
