@@ -10,8 +10,15 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -20,7 +27,10 @@
         lib = pkgs.lib;
 
         toolchain = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" "rust-analyzer" ];
+          extensions = [
+            "rust-src"
+            "rust-analyzer"
+          ];
           targets = [ "wasm32-unknown-unknown" ];
         };
         rustPlatform = pkgs.makeRustPlatform {
@@ -46,26 +56,34 @@
         };
 
         # Libraries Bevy loads at runtime on Linux (windowing + GPU).
-        runtimeLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
-          vulkan-loader
-          libGL
-          libxkbcommon
-          wayland
-          libx11
-          libxcursor
-          libxi
-          libxrandr
-        ]);
-        buildLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
-          udev
-          alsa-lib
-        ]);
+        runtimeLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux (
+          with pkgs;
+          [
+            vulkan-loader
+            libGL
+            libxkbcommon
+            wayland
+            libx11
+            libxcursor
+            libxi
+            libxrandr
+          ]
+        );
+        buildLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux (
+          with pkgs;
+          [
+            udev
+            alsa-lib
+          ]
+        );
 
         native = rustPlatform.buildRustPackage {
           inherit pname version src;
           cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = [ pkgs.pkg-config ]
-            ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.makeWrapper ];
+          nativeBuildInputs = [
+            pkgs.pkg-config
+          ]
+          ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.makeWrapper ];
           buildInputs = buildLibs ++ runtimeLibs;
           doCheck = false;
           postFixup = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
@@ -79,7 +97,10 @@
           pname = "${pname}-wasm";
           inherit version src;
           cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = [ wasm-bindgen-cli pkgs.binaryen ];
+          nativeBuildInputs = [
+            wasm-bindgen-cli
+            pkgs.binaryen
+          ];
           doCheck = false;
           buildPhase = ''
             runHook preBuild
@@ -110,6 +131,40 @@
           exec ${toolchain}/bin/cargo "$@"
         '';
 
+        # `cargo clippy` for one target, failing on any warning. Builds nothing but a marker file.
+        clippy =
+          name: targetArgs: extraBuildInputs:
+          rustPlatform.buildRustPackage {
+            pname = "${pname}-clippy-${name}";
+            inherit version src;
+            cargoLock.lockFile = ./Cargo.lock;
+            nativeBuildInputs = [ pkgs.pkg-config ];
+            buildInputs = extraBuildInputs;
+            doCheck = false;
+            buildPhase = ''
+              runHook preBuild
+              cargo clippy --frozen --all-targets ${targetArgs} -- -D warnings
+              runHook postBuild
+            '';
+            installPhase = "touch $out";
+            dontFixup = true;
+          };
+
+        # Lint a Nix file with a tool that exits non-zero on problems.
+        nixLint =
+          name: tool: command:
+          pkgs.runCommand name { nativeBuildInputs = [ tool ]; } ''
+            ${command} ${./flake.nix}
+            touch $out
+          '';
+
+        # `cargo fmt --check`, using the toolchain's rustfmt so it agrees with the dev shell.
+        # rustfmt follows `mod` declarations from the crate root.
+        fmt = pkgs.runCommand "${pname}-fmt" { nativeBuildInputs = [ toolchain ]; } ''
+          rustfmt --check --edition 2024 ${src}/src/main.rs
+          touch $out
+        '';
+
         # `nix run .#serve-wasm` serves the wasm build on http://localhost:8080
         serve-wasm = pkgs.writeShellApplication {
           name = "serve-wasm";
@@ -131,6 +186,14 @@
           serve-wasm = flake-utils.lib.mkApp { drv = serve-wasm; };
         };
 
+        checks = {
+          inherit fmt;
+          clippy-native = clippy "native" "" (buildLibs ++ runtimeLibs);
+          clippy-wasm = clippy "wasm" "--target wasm32-unknown-unknown" [ ];
+          nixfmt = nixLint "nixfmt" pkgs.nixfmt "nixfmt --check";
+          deadnix = nixLint "deadnix" pkgs.deadnix "deadnix --fail";
+        };
+
         devShells.default = pkgs.mkShell {
           packages = [
             toolchain
@@ -138,11 +201,16 @@
             pkgs.binaryen
             pkgs.pkg-config
             pkgs.python3
-          ] ++ buildLibs ++ runtimeLibs;
+            pkgs.nixfmt
+            pkgs.deadnix
+          ]
+          ++ buildLibs
+          ++ runtimeLibs;
           LD_LIBRARY_PATH = lib.makeLibraryPath runtimeLibs;
           shellHook = ''
             export PATH=${cargo-dev}/bin:$PATH
           '';
         };
-      });
+      }
+    );
 }

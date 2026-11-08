@@ -53,7 +53,12 @@ pub fn spawn_dino(
 
     commands
         .spawn((
-            Dino { id, heading, knock: Vec2::ZERO, stride: 0.0 },
+            Dino {
+                id,
+                heading,
+                knock: Vec2::ZERO,
+                stride: 0.0,
+            },
             Transform::from_translation(pos.extend(5.0 + id as f32 * 0.1))
                 .with_rotation(Quat::from_rotation_z(heading)),
             Visibility::default(),
@@ -61,31 +66,102 @@ pub fn spawn_dino(
         ))
         .with_children(|p| {
             // The dino faces +X in local space.
-            for (x, y, phase) in [(12.0, 15.0, 0.0), (-10.0, -15.0, 0.0), (12.0, -15.0, PI), (-10.0, 15.0, PI)] {
+            for (x, y, phase) in [
+                (12.0, 15.0, 0.0),
+                (-10.0, -15.0, 0.0),
+                (12.0, -15.0, PI),
+                (-10.0, 15.0, PI),
+            ] {
                 let base = Vec2::new(x, y);
-                p.spawn((part(c, materials, dark, base, 0.1, Vec2::splat(5.5), 0.0), Leg { base, phase }));
+                p.spawn((
+                    part(c, materials, dark, base, 0.1, Vec2::splat(5.5), 0.0),
+                    Leg { base, phase },
+                ));
             }
             // The tail hangs off a pivot at its base so it can wiggle.
-            p.spawn((TailPivot, Transform::from_xyz(-18.0, 0.0, 0.2), Visibility::default()))
-                .with_children(|tail| {
-                    tail.spawn(part(&assets.triangle, materials, body, Vec2::new(-14.0, 0.0), 0.0, Vec2::new(28.0, 14.0), PI));
-                });
-            p.spawn(part(c, materials, body, Vec2::ZERO, 0.3, Vec2::new(24.0, 16.0), 0.0));
+            p.spawn((
+                TailPivot,
+                Transform::from_xyz(-18.0, 0.0, 0.2),
+                Visibility::default(),
+            ))
+            .with_children(|tail| {
+                tail.spawn(part(
+                    &assets.triangle,
+                    materials,
+                    body,
+                    Vec2::new(-14.0, 0.0),
+                    0.0,
+                    Vec2::new(28.0, 14.0),
+                    PI,
+                ));
+            });
+            p.spawn(part(
+                c,
+                materials,
+                body,
+                Vec2::ZERO,
+                0.3,
+                Vec2::new(24.0, 16.0),
+                0.0,
+            ));
             for x in [-13.0, -3.0, 7.0] {
-                p.spawn(part(&assets.rhombus, materials, dark, Vec2::new(x, 0.0), 0.4, Vec2::new(9.0, 7.0), 0.0));
+                p.spawn(part(
+                    &assets.rhombus,
+                    materials,
+                    dark,
+                    Vec2::new(x, 0.0),
+                    0.4,
+                    Vec2::new(9.0, 7.0),
+                    0.0,
+                ));
             }
-            p.spawn(part(c, materials, body, Vec2::new(24.0, 0.0), 0.5, Vec2::splat(11.0), 0.0));
-            p.spawn(part(c, materials, body, Vec2::new(33.0, 0.0), 0.5, Vec2::new(8.0, 7.0), 0.0));
+            p.spawn(part(
+                c,
+                materials,
+                body,
+                Vec2::new(24.0, 0.0),
+                0.5,
+                Vec2::splat(11.0),
+                0.0,
+            ));
+            p.spawn(part(
+                c,
+                materials,
+                body,
+                Vec2::new(33.0, 0.0),
+                0.5,
+                Vec2::new(8.0, 7.0),
+                0.0,
+            ));
             for y in [6.0, -6.0] {
-                p.spawn(part(c, materials, Color::WHITE, Vec2::new(27.0, y), 0.6, Vec2::splat(3.2), 0.0));
-                p.spawn(part(c, materials, Color::BLACK, Vec2::new(28.3, y), 0.7, Vec2::splat(1.7), 0.0));
+                p.spawn(part(
+                    c,
+                    materials,
+                    Color::WHITE,
+                    Vec2::new(27.0, y),
+                    0.6,
+                    Vec2::splat(3.2),
+                    0.0,
+                ));
+                p.spawn(part(
+                    c,
+                    materials,
+                    Color::BLACK,
+                    Vec2::new(28.3, y),
+                    0.7,
+                    Vec2::splat(1.7),
+                    0.0,
+                ));
             }
         });
 
     commands.spawn((
         DinoLabel(id),
         Text2d::new(def.name),
-        TextFont { font_size: FontSize::Px(15.0), ..default() },
+        TextFont {
+            font_size: FontSize::Px(15.0),
+            ..default()
+        },
         TextColor(def.color),
         Transform::from_translation((pos + Vec2::Y * 38.0).extend(20.0)),
         DespawnOnExit(crate::AppState::Playing),

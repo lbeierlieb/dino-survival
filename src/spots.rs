@@ -47,7 +47,11 @@ pub fn spawn_spots(
         let mut pos = Vec2::ZERO;
         for attempt in 0..300 {
             pos = Vec2::new(rng.range(min.x, max.x), rng.range(min.y, max.y));
-            let gap = if attempt < 200 { 2.0 * r + 40.0 } else { 2.0 * r };
+            let gap = if attempt < 200 {
+                2.0 * r + 40.0
+            } else {
+                2.0 * r
+            };
             if placed.iter().all(|p| p.distance(pos) > gap) {
                 break;
             }
@@ -62,7 +66,14 @@ pub fn spawn_spots(
         // Each spot gets its own z band (its parts span local z 0.0..=0.5), so overlapping
         // spots draw one on top of the other instead of interleaving. All stay below the dinos.
         let z = 0.5 + i as f32 * 0.55;
-        spawn_spot(commands, assets, materials, element, pos.extend(z), velocity);
+        spawn_spot(
+            commands,
+            assets,
+            materials,
+            element,
+            pos.extend(z),
+            velocity,
+        );
     }
 }
 
@@ -79,53 +90,190 @@ fn spawn_spot(
     let tri = &assets.triangle;
     commands
         .spawn((
-            SafeSpot { element, radius: r, velocity },
+            SafeSpot {
+                element,
+                radius: r,
+                velocity,
+            },
             SpotAge::default(),
             Transform::from_translation(pos).with_scale(Vec3::new(0.01, 0.01, 1.0)),
             Visibility::default(),
             DespawnOnExit(crate::AppState::Playing),
         ))
         .with_children(|p| {
-            p.spawn(part(&assets.ring, materials, element.color(), Vec2::ZERO, 0.0, Vec2::splat(r + 6.0), 0.0));
+            p.spawn(part(
+                &assets.ring,
+                materials,
+                element.color(),
+                Vec2::ZERO,
+                0.0,
+                Vec2::splat(r + 6.0),
+                0.0,
+            ));
             match element {
                 Element::Fire => {
                     // Lake
-                    p.spawn(part(c, materials, Color::srgb(0.13, 0.38, 0.75), Vec2::ZERO, 0.1, Vec2::splat(r), 0.0));
-                    p.spawn(part(c, materials, Color::srgb(0.22, 0.55, 0.92), Vec2::new(0.0, -0.05 * r), 0.2, Vec2::splat(0.72 * r), 0.0));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.13, 0.38, 0.75),
+                        Vec2::ZERO,
+                        0.1,
+                        Vec2::splat(r),
+                        0.0,
+                    ));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.22, 0.55, 0.92),
+                        Vec2::new(0.0, -0.05 * r),
+                        0.2,
+                        Vec2::splat(0.72 * r),
+                        0.0,
+                    ));
                     for (x, y, w) in [(-0.2, 0.3, 0.32), (0.25, -0.15, 0.22), (-0.1, -0.4, 0.18)] {
-                        p.spawn(part(c, materials, Color::srgb(0.65, 0.85, 1.0), Vec2::new(x, y) * r, 0.3, Vec2::new(w, 0.05) * r, 0.0));
+                        p.spawn(part(
+                            c,
+                            materials,
+                            Color::srgb(0.65, 0.85, 1.0),
+                            Vec2::new(x, y) * r,
+                            0.3,
+                            Vec2::new(w, 0.05) * r,
+                            0.0,
+                        ));
                     }
                 }
                 Element::Water => {
                     // Mountain
-                    p.spawn(part(c, materials, Color::srgb(0.38, 0.34, 0.30), Vec2::ZERO, 0.1, Vec2::splat(r), 0.0));
-                    p.spawn(part(tri, materials, Color::srgb(0.50, 0.47, 0.45), Vec2::new(0.32, -0.25) * r, 0.2, Vec2::new(0.8, 0.9) * r, FRAC_PI_2));
-                    p.spawn(part(tri, materials, Color::srgb(0.60, 0.57, 0.54), Vec2::new(-0.18, -0.08) * r, 0.3, Vec2::new(1.1, 1.1) * r, FRAC_PI_2));
-                    p.spawn(part(tri, materials, Color::srgb(0.96, 0.96, 0.98), Vec2::new(-0.18, 0.31) * r, 0.4, Vec2::new(0.32, 0.32) * r, FRAC_PI_2));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.38, 0.34, 0.30),
+                        Vec2::ZERO,
+                        0.1,
+                        Vec2::splat(r),
+                        0.0,
+                    ));
+                    p.spawn(part(
+                        tri,
+                        materials,
+                        Color::srgb(0.50, 0.47, 0.45),
+                        Vec2::new(0.32, -0.25) * r,
+                        0.2,
+                        Vec2::new(0.8, 0.9) * r,
+                        FRAC_PI_2,
+                    ));
+                    p.spawn(part(
+                        tri,
+                        materials,
+                        Color::srgb(0.60, 0.57, 0.54),
+                        Vec2::new(-0.18, -0.08) * r,
+                        0.3,
+                        Vec2::new(1.1, 1.1) * r,
+                        FRAC_PI_2,
+                    ));
+                    p.spawn(part(
+                        tri,
+                        materials,
+                        Color::srgb(0.96, 0.96, 0.98),
+                        Vec2::new(-0.18, 0.31) * r,
+                        0.4,
+                        Vec2::new(0.32, 0.32) * r,
+                        FRAC_PI_2,
+                    ));
                 }
                 Element::Storm => {
                     // Cave
-                    p.spawn(part(c, materials, Color::srgb(0.36, 0.27, 0.20), Vec2::ZERO, 0.1, Vec2::splat(r), 0.0));
-                    for (x, y, s) in [(-0.6, 0.45, 0.3), (0.55, 0.5, 0.26), (0.0, 0.62, 0.24), (-0.7, -0.3, 0.2), (0.68, -0.3, 0.22)] {
-                        p.spawn(part(c, materials, Color::srgb(0.28, 0.21, 0.16), Vec2::new(x, y) * r, 0.2, Vec2::splat(s * r), 0.0));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.36, 0.27, 0.20),
+                        Vec2::ZERO,
+                        0.1,
+                        Vec2::splat(r),
+                        0.0,
+                    ));
+                    for (x, y, s) in [
+                        (-0.6, 0.45, 0.3),
+                        (0.55, 0.5, 0.26),
+                        (0.0, 0.62, 0.24),
+                        (-0.7, -0.3, 0.2),
+                        (0.68, -0.3, 0.22),
+                    ] {
+                        p.spawn(part(
+                            c,
+                            materials,
+                            Color::srgb(0.28, 0.21, 0.16),
+                            Vec2::new(x, y) * r,
+                            0.2,
+                            Vec2::splat(s * r),
+                            0.0,
+                        ));
                     }
-                    p.spawn(part(c, materials, Color::srgb(0.07, 0.05, 0.05), Vec2::new(0.0, -0.12) * r, 0.3, Vec2::new(0.55, 0.45) * r, 0.0));
-                    p.spawn(part(&assets.square, materials, Color::srgb(0.07, 0.05, 0.05), Vec2::new(0.0, -0.45) * r, 0.3, Vec2::new(1.1, 0.5) * r, 0.0));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.07, 0.05, 0.05),
+                        Vec2::new(0.0, -0.12) * r,
+                        0.3,
+                        Vec2::new(0.55, 0.45) * r,
+                        0.0,
+                    ));
+                    p.spawn(part(
+                        &assets.square,
+                        materials,
+                        Color::srgb(0.07, 0.05, 0.05),
+                        Vec2::new(0.0, -0.45) * r,
+                        0.3,
+                        Vec2::new(1.1, 0.5) * r,
+                        0.0,
+                    ));
                 }
                 Element::Lightning => {
                     // Ferns
-                    p.spawn(part(c, materials, Color::srgb(0.12, 0.33, 0.14), Vec2::ZERO, 0.1, Vec2::splat(r), 0.0));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.12, 0.33, 0.14),
+                        Vec2::ZERO,
+                        0.1,
+                        Vec2::splat(r),
+                        0.0,
+                    ));
                     for k in 0..7 {
                         let a = k as f32 * PI * 2.0 / 7.0 + 0.3;
-                        let shade = if k % 2 == 0 { Color::srgb(0.25, 0.62, 0.25) } else { Color::srgb(0.32, 0.72, 0.30) };
-                        p.spawn(part(c, materials, shade, Vec2::from_angle(a) * 0.45 * r, 0.2, Vec2::new(0.48, 0.14) * r, a));
+                        let shade = if k % 2 == 0 {
+                            Color::srgb(0.25, 0.62, 0.25)
+                        } else {
+                            Color::srgb(0.32, 0.72, 0.30)
+                        };
+                        p.spawn(part(
+                            c,
+                            materials,
+                            shade,
+                            Vec2::from_angle(a) * 0.45 * r,
+                            0.2,
+                            Vec2::new(0.48, 0.14) * r,
+                            a,
+                        ));
                     }
-                    p.spawn(part(c, materials, Color::srgb(0.18, 0.48, 0.20), Vec2::ZERO, 0.3, Vec2::splat(0.18 * r), 0.0));
+                    p.spawn(part(
+                        c,
+                        materials,
+                        Color::srgb(0.18, 0.48, 0.20),
+                        Vec2::ZERO,
+                        0.3,
+                        Vec2::splat(0.18 * r),
+                        0.0,
+                    ));
                 }
             }
             p.spawn((
                 Text2d::new(element.spot_name()),
-                TextFont { font_size: FontSize::Px(14.0), ..default() },
+                TextFont {
+                    font_size: FontSize::Px(14.0),
+                    ..default()
+                },
                 TextColor(element.color()),
                 Transform::from_xyz(0.0, -r - 18.0, 0.5),
             ));
@@ -154,7 +302,11 @@ pub fn distance_to_safety<'a>(
         .unwrap_or((f32::INFINITY, pos))
 }
 
-pub fn move_spots(time: Res<Time>, m: Res<Match>, mut spots: Query<(&mut SafeSpot, &mut Transform)>) {
+pub fn move_spots(
+    time: Res<Time>,
+    m: Res<Match>,
+    mut spots: Query<(&mut SafeSpot, &mut Transform)>,
+) {
     if !matches!(m.phase, Phase::Roam | Phase::Call) {
         return;
     }
@@ -179,7 +331,11 @@ pub fn move_spots(time: Res<Time>, m: Res<Match>, mut spots: Query<(&mut SafeSpo
 }
 
 /// Pop in when spawned; the spots matching the current call pulse.
-pub fn animate_spots(time: Res<Time>, m: Res<Match>, mut spots: Query<(&SafeSpot, &mut SpotAge, &mut Transform)>) {
+pub fn animate_spots(
+    time: Res<Time>,
+    m: Res<Match>,
+    mut spots: Query<(&SafeSpot, &mut SpotAge, &mut Transform)>,
+) {
     let t = time.elapsed_secs();
     for (spot, mut age, mut transform) in &mut spots {
         age.0 += time.delta_secs();

@@ -31,17 +31,21 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Playing), spawn_hud).add_systems(
-            Update,
-            (update_panels, update_banner).run_if(in_state(AppState::Playing)),
-        );
+        app.add_systems(OnEnter(AppState::Playing), spawn_hud)
+            .add_systems(
+                Update,
+                (update_panels, update_banner).run_if(in_state(AppState::Playing)),
+            );
     }
 }
 
 fn text(value: impl Into<String>, size: f32, color: Color) -> impl Bundle {
     (
         Text::new(value),
-        TextFont { font_size: FontSize::Px(size), ..default() },
+        TextFont {
+            font_size: FontSize::Px(size),
+            ..default()
+        },
         TextColor(color),
     )
 }
@@ -132,7 +136,11 @@ fn spawn_hud(mut commands: Commands, roster: Res<Roster>) {
                         BarTrack,
                     ))
                     .with_child((
-                        Node { width: percent(100), height: percent(100), ..default() },
+                        Node {
+                            width: percent(100),
+                            height: percent(100),
+                            ..default()
+                        },
                         BackgroundColor(TEXT),
                         BarFill,
                     ));
@@ -153,7 +161,11 @@ fn update_panels(
         };
     }
     for (name, mut color) in &mut names {
-        color.0 = if roster.lives[name.0] > 0 { PLAYERS[name.0].color } else { TEXT_DIM };
+        color.0 = if roster.lives[name.0] > 0 {
+            PLAYERS[name.0].color
+        } else {
+            TEXT_DIM
+        };
     }
 }
 
@@ -194,13 +206,7 @@ fn update_banner(
             TEXT,
             Some(m.element.color()),
         ),
-        Phase::Verdict => (
-            "TIME!".into(),
-            TEXT,
-            m.message.clone(),
-            TEXT,
-            None,
-        ),
+        Phase::Verdict => ("TIME!".into(), TEXT, m.message.clone(), TEXT, None),
         Phase::Finished => match m.winner {
             Some(id) => (
                 format!("{} WINS!", PLAYERS[id].name),
@@ -212,7 +218,10 @@ fn update_banner(
             None if roster.solo() => (
                 "GAME OVER".into(),
                 DANGER,
-                format!("You reached round {}    SPACE: try again    ESC: back to lobby", m.round),
+                format!(
+                    "You reached round {}    SPACE: try again    ESC: back to lobby",
+                    m.round
+                ),
                 TEXT_DIM,
                 None,
             ),
@@ -235,8 +244,13 @@ fn update_banner(
     title_color.0 = tc;
     sub_color.0 = sc;
 
-    if let (Ok(mut track), Ok((mut fill, mut fill_color))) = (track.single_mut(), fill.single_mut()) {
-        track.display = if bar.is_some() { Display::Flex } else { Display::None };
+    if let (Ok(mut track), Ok((mut fill, mut fill_color))) = (track.single_mut(), fill.single_mut())
+    {
+        track.display = if bar.is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        };
         if let Some(color) = bar {
             fill_color.0 = color;
             fill.width = percent((m.timer / m.duration).clamp(0.0, 1.0) * 100.0);

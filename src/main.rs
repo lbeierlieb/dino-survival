@@ -57,9 +57,10 @@ fn main() {
         .init_state::<AppState>()
         .add_systems(Startup, (spawn_camera, assets::load_assets))
         .add_plugins((lobby::LobbyPlugin, round::RoundPlugin, hud::HudPlugin))
-        .add_systems(OnEnter(AppState::Restart), |mut next: ResMut<NextState<AppState>>| {
-            next.set(AppState::Playing)
-        })
+        .add_systems(
+            OnEnter(AppState::Restart),
+            |mut next: ResMut<NextState<AppState>>| next.set(AppState::Playing),
+        )
         .run();
 }
 

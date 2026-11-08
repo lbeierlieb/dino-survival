@@ -143,21 +143,46 @@ fn spawn_arena(
 ) {
     let scoped = DespawnOnExit(AppState::Playing);
     commands.spawn((
-        crate::assets::part(&assets.square, materials, WALL, ARENA_CENTER, -2.0, ARENA_HALF * 2.0 + Vec2::splat(28.0), 0.0),
+        crate::assets::part(
+            &assets.square,
+            materials,
+            WALL,
+            ARENA_CENTER,
+            -2.0,
+            ARENA_HALF * 2.0 + Vec2::splat(28.0),
+            0.0,
+        ),
         scoped.clone(),
     ));
     commands.spawn((
-        crate::assets::part(&assets.square, materials, GROUND, ARENA_CENTER, -1.9, ARENA_HALF * 2.0, 0.0),
+        crate::assets::part(
+            &assets.square,
+            materials,
+            GROUND,
+            ARENA_CENTER,
+            -1.9,
+            ARENA_HALF * 2.0,
+            0.0,
+        ),
         scoped.clone(),
     ));
     // Some patchy texture on the ground.
     for _ in 0..40 {
         let pos = ARENA_CENTER
-            + Vec2::new(rng.range(-1.0, 1.0), rng.range(-1.0, 1.0)) * (ARENA_HALF - Vec2::splat(30.0));
+            + Vec2::new(rng.range(-1.0, 1.0), rng.range(-1.0, 1.0))
+                * (ARENA_HALF - Vec2::splat(30.0));
         let size = Vec2::new(rng.range(18.0, 50.0), rng.range(10.0, 28.0));
         let color = shade(GROUND, rng.range(0.90, 0.97));
         commands.spawn((
-            crate::assets::part(&assets.circle, materials, color, pos, -1.8, size, rng.angle()),
+            crate::assets::part(
+                &assets.circle,
+                materials,
+                color,
+                pos,
+                -1.8,
+                size,
+                rng.angle(),
+            ),
             scoped.clone(),
         ));
     }
@@ -214,7 +239,11 @@ fn tick_phase(
             m.lines.clear();
 
             let alive: Vec<usize> = roster.alive().collect();
-            let over = if roster.solo() { alive.is_empty() } else { alive.len() <= 1 };
+            let over = if roster.solo() {
+                alive.is_empty()
+            } else {
+                alive.len() <= 1
+            };
             if over {
                 m.winner = alive.first().copied();
                 m.enter(Phase::Finished, f32::INFINITY);
@@ -245,7 +274,9 @@ fn resolve_call(
         .iter()
         .map(|(_, d, t)| {
             let pos = t.translation.truncate();
-            let spots = spot_query.iter().map(|(_, st, s)| (st.translation.truncate(), s));
+            let spots = spot_query
+                .iter()
+                .map(|(_, st, s)| (st.translation.truncate(), s));
             let (dist, nearest) = spots::distance_to_safety(pos, m.element, spots);
             (d.id, pos, dist, nearest)
         })
@@ -258,7 +289,11 @@ fn resolve_call(
     m.lines.clear();
     for &(id, pos, dist, nearest) in &results {
         // Solo practice has nobody to be furthest from, so being outside a spot costs a life.
-        let lost = if solo { dist > 0.0 } else { worst > 0.5 && dist >= worst - 0.5 };
+        let lost = if solo {
+            dist > 0.0
+        } else {
+            worst > 0.5 && dist >= worst - 0.5
+        };
         m.lines.push((pos, nearest, lost));
         let (text, color) = if lost {
             roster.lives[id] = roster.lives[id].saturating_sub(1);
@@ -277,7 +312,10 @@ fn resolve_call(
         commands.spawn((
             Floater { age: 0.0 },
             Text2d::new(text),
-            TextFont { font_size: FontSize::Px(22.0), ..default() },
+            TextFont {
+                font_size: FontSize::Px(22.0),
+                ..default()
+            },
             TextColor(color),
             Transform::from_translation((pos + Vec2::Y * floater_offset(pos)).extend(30.0)),
             DespawnOnExit(AppState::Playing),
@@ -299,7 +337,11 @@ fn resolve_call(
 
 /// Above the dino, unless that would hide it under the banner at the top of the arena.
 fn floater_offset(pos: Vec2) -> f32 {
-    if pos.y > ARENA_CENTER.y + ARENA_HALF.y - 120.0 { -55.0 } else { 58.0 }
+    if pos.y > ARENA_CENTER.y + ARENA_HALF.y - 120.0 {
+        -55.0
+    } else {
+        58.0
+    }
 }
 
 fn join_names(names: &[&str]) -> String {
@@ -319,7 +361,9 @@ fn animate_floaters(
     for (entity, mut floater, mut transform, mut color) in &mut floaters {
         floater.age += dt;
         transform.translation.y += 30.0 * dt;
-        color.0.set_alpha((1.0 - (floater.age - 1.4).max(0.0) / 0.8).max(0.0));
+        color
+            .0
+            .set_alpha((1.0 - (floater.age - 1.4).max(0.0) / 0.8).max(0.0));
         if floater.age > 2.2 {
             commands.entity(entity).despawn();
         }
@@ -344,8 +388,7 @@ fn menu_keys(
 ) {
     if keys.just_pressed(KeyCode::Escape) {
         next.set(AppState::Lobby);
-    } else if m.phase == Phase::Finished
-        && keys.any_just_pressed([KeyCode::Space, KeyCode::Enter])
+    } else if m.phase == Phase::Finished && keys.any_just_pressed([KeyCode::Space, KeyCode::Enter])
     {
         next.set(AppState::Restart);
     }

@@ -19,17 +19,23 @@ pub struct LobbyPlugin;
 
 impl Plugin for LobbyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Lobby), spawn_lobby).add_systems(
-            Update,
-            (lobby_input, update_lobby).chain().run_if(in_state(AppState::Lobby)),
-        );
+        app.add_systems(OnEnter(AppState::Lobby), spawn_lobby)
+            .add_systems(
+                Update,
+                (lobby_input, update_lobby)
+                    .chain()
+                    .run_if(in_state(AppState::Lobby)),
+            );
     }
 }
 
 fn text(value: impl Into<String>, size: f32, color: Color) -> impl Bundle {
     (
         Text::new(value),
-        TextFont { font_size: FontSize::Px(size), ..default() },
+        TextFont {
+            font_size: FontSize::Px(size),
+            ..default()
+        },
         TextColor(color),
     )
 }
@@ -37,7 +43,10 @@ fn text(value: impl Into<String>, size: f32, color: Color) -> impl Bundle {
 fn span(value: impl Into<String>, size: f32, color: Color) -> impl Bundle {
     (
         TextSpan::new(value),
-        TextFont { font_size: FontSize::Px(size), ..default() },
+        TextFont {
+            font_size: FontSize::Px(size),
+            ..default()
+        },
         TextColor(color),
     )
 }
@@ -64,7 +73,11 @@ fn spawn_lobby(mut commands: Commands) {
                     title.spawn(span(format!("{word}{sep}"), 54.0, e.color()));
                 }
             });
-            root.spawn(text("a dinosaur party game for 2-4 players on one keyboard (or practice solo)", 22.0, TEXT_DIM));
+            root.spawn(text(
+                "a dinosaur party game for 2-4 players on one keyboard (or practice solo)",
+                22.0,
+                TEXT_DIM,
+            ));
 
             // Rules.
             root.spawn((
@@ -79,10 +92,22 @@ fn spawn_lobby(mut commands: Commands) {
                 BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.05)),
             ))
             .with_children(|rules| {
-                rules.spawn(text("Your dino never stops running. You can only steer it left and right.", 18.0, TEXT));
-                rules.spawn(text("When an element is called, race to the matching safe spot:", 18.0, TEXT));
+                rules.spawn(text(
+                    "Your dino never stops running. You can only steer it left and right.",
+                    18.0,
+                    TEXT,
+                ));
+                rules.spawn(text(
+                    "When an element is called, race to the matching safe spot:",
+                    18.0,
+                    TEXT,
+                ));
                 rules
-                    .spawn(Node { column_gap: px(28), margin: UiRect::vertical(px(4)), ..default() })
+                    .spawn(Node {
+                        column_gap: px(28),
+                        margin: UiRect::vertical(px(4)),
+                        ..default()
+                    })
                     .with_children(|legend| {
                         for e in Element::ALL {
                             legend.spawn(text("", 20.0, TEXT)).with_children(|t| {
@@ -92,13 +117,25 @@ fn spawn_lobby(mut commands: Commands) {
                             });
                         }
                     });
-                rules.spawn(text("When time runs out, the dino furthest from safety loses a life.", 18.0, TEXT));
-                rules.spawn(text("Spots reshuffle every round and some wander. Shove rivals out of your way!", 18.0, TEXT));
+                rules.spawn(text(
+                    "When time runs out, the dino furthest from safety loses a life.",
+                    18.0,
+                    TEXT,
+                ));
+                rules.spawn(text(
+                    "Spots reshuffle every round and some wander. Shove rivals out of your way!",
+                    18.0,
+                    TEXT,
+                ));
                 rules.spawn(text("Last dino standing wins.", 18.0, TEXT));
             });
 
             // Player slots.
-            root.spawn(Node { column_gap: px(16), ..default() }).with_children(|row| {
+            root.spawn(Node {
+                column_gap: px(16),
+                ..default()
+            })
+            .with_children(|row| {
                 for (id, def) in PLAYERS.iter().enumerate() {
                     row.spawn((
                         Node {
