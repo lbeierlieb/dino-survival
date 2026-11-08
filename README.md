@@ -3,6 +3,8 @@
 A local multiplayer party game for 2–4 players on one keyboard, with a solo practice
 mode, inspired by the German gym game *Feuer, Wasser, Sturm, Blitz*. Built with [Bevy](https://bevy.org) 0.20.
 
+**Play it in your browser: <https://lbeierlieb.github.io/dino-survival/>**
+
 ## How to play
 
 Every dino runs all the time. You can only steer it left or right.
