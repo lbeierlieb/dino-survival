@@ -32,6 +32,11 @@ impl Roster {
     pub fn alive(&self) -> impl Iterator<Item = usize> + '_ {
         (0..4).filter(|&i| self.joined[i] && self.lives[i] > 0)
     }
+
+    /// Practice mode: one player, who loses a life whenever they aren't safe.
+    pub fn solo(&self) -> bool {
+        self.joined.iter().filter(|&&j| j).count() == 1
+    }
 }
 
 fn main() {

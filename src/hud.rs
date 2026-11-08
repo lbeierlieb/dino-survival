@@ -160,6 +160,7 @@ fn update_panels(
 #[allow(clippy::type_complexity)]
 fn update_banner(
     m: Res<Match>,
+    roster: Res<Roster>,
     mut title: Query<(&mut Text, &mut TextColor), With<BannerTitle>>,
     mut sub: Query<(&mut Text, &mut TextColor), (With<BannerSub>, Without<BannerTitle>)>,
     mut track: Query<&mut Node, (With<BarTrack>, Without<BarFill>)>,
@@ -205,6 +206,13 @@ fn update_banner(
                 format!("{} WINS!", PLAYERS[id].name),
                 PLAYERS[id].color,
                 "SPACE: rematch    ESC: back to lobby".into(),
+                TEXT_DIM,
+                None,
+            ),
+            None if roster.solo() => (
+                "GAME OVER".into(),
+                DANGER,
+                format!("You reached round {}    SPACE: try again    ESC: back to lobby", m.round),
                 TEXT_DIM,
                 None,
             ),

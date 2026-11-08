@@ -214,7 +214,8 @@ fn tick_phase(
             m.lines.clear();
 
             let alive: Vec<usize> = roster.alive().collect();
-            if alive.len() <= 1 {
+            let over = if roster.solo() { alive.is_empty() } else { alive.len() <= 1 };
+            if over {
                 m.winner = alive.first().copied();
                 m.enter(Phase::Finished, f32::INFINITY);
                 return;
@@ -251,11 +252,13 @@ fn resolve_call(
         .collect();
 
     let worst = results.iter().map(|r| r.2).fold(0.0, f32::max);
+    let solo = roster.solo();
     let mut losers = Vec::new();
     let mut knocked_out = Vec::new();
     m.lines.clear();
     for &(id, pos, dist, nearest) in &results {
-        let lost = worst > 0.5 && dist >= worst - 0.5;
+        // Solo practice has nobody to be furthest from, so being outside a spot costs a life.
+        let lost = if solo { dist > 0.0 } else { worst > 0.5 && dist >= worst - 0.5 };
         m.lines.push((pos, nearest, lost));
         let (text, color) = if lost {
             roster.lives[id] = roster.lives[id].saturating_sub(1);
@@ -282,6 +285,8 @@ fn resolve_call(
     }
 
     m.message = match losers.len() {
+        0 if solo => "Made it!".to_string(),
+        1 if solo => "Not safe!".to_string(),
         0 => "Everyone made it!".to_string(),
         1 => format!("{} was furthest away", losers[0]),
         _ => format!("{} tied for last", join_names(&losers)),

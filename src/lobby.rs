@@ -1,4 +1,4 @@
-//! Title screen: rules, and 2-4 players join by pressing one of their steering keys.
+//! Title screen: rules, and 1-4 players join (1 = solo practice) by pressing one of their steering keys.
 
 use bevy::prelude::*;
 
@@ -64,7 +64,7 @@ fn spawn_lobby(mut commands: Commands) {
                     title.spawn(span(format!("{word}{sep}"), 54.0, e.color()));
                 }
             });
-            root.spawn(text("a dinosaur party game for 2-4 players on one keyboard", 22.0, TEXT_DIM));
+            root.spawn(text("a dinosaur party game for 2-4 players on one keyboard (or practice solo)", 22.0, TEXT_DIM));
 
             // Rules.
             root.spawn((
@@ -147,7 +147,7 @@ fn lobby_input(
         roster.joined = [false; 4];
     }
     let count = roster.joined.iter().filter(|&&j| j).count();
-    if count >= 2 && keys.any_just_pressed([KeyCode::Space, KeyCode::Enter]) {
+    if count >= 1 && keys.any_just_pressed([KeyCode::Space, KeyCode::Enter]) {
         // When exactly players hit start is as good a seed as any.
         rng.reseed(time.elapsed().as_nanos() as u64);
         next.set(AppState::Playing);
@@ -180,10 +180,10 @@ fn update_lobby(
     }
     let count = roster.joined.iter().filter(|&&j| j).count();
     if let Ok(mut prompt) = prompt.single_mut() {
-        let t = if count >= 2 {
-            format!("{count} players ready  -  press SPACE or ENTER to start")
-        } else {
-            "Waiting for at least 2 players...".to_string()
+        let t = match count {
+            0 => "Waiting for players...".to_string(),
+            1 => "1 player ready  -  press SPACE or ENTER to practice solo".to_string(),
+            _ => format!("{count} players ready  -  press SPACE or ENTER to start"),
         };
         if prompt.0 != t {
             prompt.0 = t;

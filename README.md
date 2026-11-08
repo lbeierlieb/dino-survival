@@ -30,6 +30,8 @@ The last dino standing wins.
 | RAPTOR | `Numpad 4` / `6` or `-` / `=` |
 
 In the lobby, press one of your keys to join, then `Space`/`Enter` to start.
+With just one player it's a solo practice mode: any time you aren't inside a matching
+spot when the countdown ends, you lose a life.
 `Backspace` clears the players. `Esc` during a game goes back to the lobby.
 
 Note: some keyboards can't register many keys held at once ("ghosting"). If a
