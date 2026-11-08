@@ -13,7 +13,26 @@ pub struct Dino {
     pub heading: f32,
     /// Extra velocity from collisions; decays quickly.
     pub knock: Vec2,
+    /// Walk cycle phase in radians; drives the legs.
+    pub stride: f32,
 }
+
+/// A foot that swings back and forth around `base` (local to the dino).
+#[derive(Component)]
+pub struct Leg {
+    base: Vec2,
+    /// Diagonal pairs share a phase, like a walking lizard.
+    phase: f32,
+}
+
+/// Rotates the tail around its base.
+#[derive(Component)]
+pub struct TailPivot;
+
+/// Walk cycle speed in radians per second (about 3 steps per second).
+const STRIDE_RATE: f32 = 18.0;
+const LEG_SWING: f32 = 6.0;
+const TAIL_SWING: f32 = 0.35;
 
 /// Floating name tag that follows dino `0`.
 #[derive(Component)]
@@ -34,7 +53,7 @@ pub fn spawn_dino(
 
     commands
         .spawn((
-            Dino { id, heading, knock: Vec2::ZERO },
+            Dino { id, heading, knock: Vec2::ZERO, stride: 0.0 },
             Transform::from_translation(pos.extend(5.0 + id as f32 * 0.1))
                 .with_rotation(Quat::from_rotation_z(heading)),
             Visibility::default(),
@@ -42,10 +61,15 @@ pub fn spawn_dino(
         ))
         .with_children(|p| {
             // The dino faces +X in local space.
-            for (x, y) in [(12.0, 15.0), (12.0, -15.0), (-10.0, 15.0), (-10.0, -15.0)] {
-                p.spawn(part(c, materials, dark, Vec2::new(x, y), 0.1, Vec2::splat(5.5), 0.0));
+            for (x, y, phase) in [(12.0, 15.0, 0.0), (-10.0, -15.0, 0.0), (12.0, -15.0, PI), (-10.0, 15.0, PI)] {
+                let base = Vec2::new(x, y);
+                p.spawn((part(c, materials, dark, base, 0.1, Vec2::splat(5.5), 0.0), Leg { base, phase }));
             }
-            p.spawn(part(&assets.triangle, materials, body, Vec2::new(-32.0, 0.0), 0.2, Vec2::new(28.0, 14.0), PI));
+            // The tail hangs off a pivot at its base so it can wiggle.
+            p.spawn((TailPivot, Transform::from_xyz(-18.0, 0.0, 0.2), Visibility::default()))
+                .with_children(|tail| {
+                    tail.spawn(part(&assets.triangle, materials, body, Vec2::new(-14.0, 0.0), 0.0, Vec2::new(28.0, 14.0), PI));
+                });
             p.spawn(part(c, materials, body, Vec2::ZERO, 0.3, Vec2::new(24.0, 16.0), 0.0));
             for x in [-13.0, -3.0, 7.0] {
                 p.spawn(part(&assets.rhombus, materials, dark, Vec2::new(x, 0.0), 0.4, Vec2::new(9.0, 7.0), 0.0));
@@ -136,6 +160,34 @@ pub fn collide_dinos(m: Res<Match>, mut dinos: Query<(&mut Dino, &mut Transform)
             let impulse = normal * (closing * 0.9 + 60.0);
             a.knock -= impulse;
             b.knock += impulse;
+        }
+    }
+}
+
+/// Swing the feet while the dinos are running, and wiggle the tails all the time.
+pub fn animate_dinos(
+    time: Res<Time>,
+    m: Res<Match>,
+    mut dinos: Query<&mut Dino>,
+    mut legs: Query<(&ChildOf, &Leg, &mut Transform), Without<TailPivot>>,
+    mut tails: Query<(&ChildOf, &mut Transform), With<TailPivot>>,
+) {
+    if m.phase.dinos_move() {
+        for mut dino in &mut dinos {
+            dino.stride = (dino.stride + STRIDE_RATE * time.delta_secs()) % std::f32::consts::TAU;
+        }
+    }
+    for (child_of, leg, mut transform) in &mut legs {
+        if let Ok(dino) = dinos.get(child_of.parent()) {
+            transform.translation.x = leg.base.x + (dino.stride + leg.phase).sin() * LEG_SWING;
+        }
+    }
+    // The tail never stops wiggling, even while standing; offset per dino so they don't sync up.
+    let t = time.elapsed_secs() * STRIDE_RATE;
+    for (child_of, mut transform) in &mut tails {
+        if let Ok(dino) = dinos.get(child_of.parent()) {
+            let wiggle = (t + dino.id as f32 * 1.7).sin() * TAIL_SWING;
+            transform.rotation = Quat::from_rotation_z(wiggle);
         }
     }
 }

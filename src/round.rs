@@ -90,6 +90,7 @@ impl Plugin for RoundPlugin {
                     tick_phase,
                     dino::steer_and_move,
                     dino::collide_dinos,
+                    dino::animate_dinos,
                     spots::move_spots,
                     spots::animate_spots,
                     dino::sync_labels,
