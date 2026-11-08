@@ -202,6 +202,8 @@
           };
 
           checks = {
+            # Packaging steps clippy doesn't exercise: linking, wasm-bindgen, wasm-opt.
+            inherit native wasm;
             fmt = craneLib.cargoFmt { inherit pname version src; };
             clippy-native = clippy nativeArgs nativeDeps;
             clippy-wasm = clippy wasmArgs wasmDeps;
