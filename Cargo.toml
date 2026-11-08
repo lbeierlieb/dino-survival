@@ -1,5 +1,5 @@
 [package]
-name = "dino-elements"
+name = "dino-survival"
 version = "0.1.0"
 edition = "2024"
 description = "Fire, Water, Storm, Lightning: a local multiplayer dinosaur party game"

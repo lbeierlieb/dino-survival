@@ -43,7 +43,7 @@ player's key stops responding while others are pressed, try a different keyboard
 nix develop                  # dev shell: Rust (with wasm32 target), wasm-bindgen, binaryen
 cargo run                    # in the dev shell: optimized build, quick incremental rebuilds
 
-nix build .#native           # native binary  -> result/bin/dino-elements
+nix build .#native           # native binary  -> result/bin/dino-survival
 nix run                      # build and run the native version
 nix build .#wasm             # web build      -> result/{index.html, *.js, *.wasm}
 nix run .#serve-wasm         # serve the web build on http://localhost:8080
