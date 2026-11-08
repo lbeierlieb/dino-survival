@@ -13,6 +13,14 @@ pub struct SafeSpot {
     pub element: Element,
     pub radius: f32,
     pub velocity: Vec2,
+    /// Stacking order among the spots, 0 at the bottom. Called spots are drawn above the rest.
+    pub layer: usize,
+}
+
+/// Each spot gets its own z band (its parts span local z 0.0..=0.5), so overlapping spots
+/// draw one on top of the other instead of interleaving. All stay below the dinos.
+fn layer_z(rank: usize) -> f32 {
+    0.5 + rank as f32 * 0.55
 }
 
 /// Seconds since the spot appeared, for the pop-in animation.
@@ -63,17 +71,7 @@ pub fn spawn_spots(
         } else {
             Vec2::ZERO
         };
-        // Each spot gets its own z band (its parts span local z 0.0..=0.5), so overlapping
-        // spots draw one on top of the other instead of interleaving. All stay below the dinos.
-        let z = 0.5 + i as f32 * 0.55;
-        spawn_spot(
-            commands,
-            assets,
-            materials,
-            element,
-            pos.extend(z),
-            velocity,
-        );
+        spawn_spot(commands, assets, materials, element, pos, velocity, i);
     }
 }
 
@@ -82,8 +80,9 @@ fn spawn_spot(
     assets: &GameAssets,
     materials: &mut Assets<ColorMaterial>,
     element: Element,
-    pos: Vec3,
+    pos: Vec2,
     velocity: Vec2,
+    layer: usize,
 ) {
     let r = SPOT_RADIUS;
     let c = &assets.circle;
@@ -94,9 +93,11 @@ fn spawn_spot(
                 element,
                 radius: r,
                 velocity,
+                layer,
             },
             SpotAge::default(),
-            Transform::from_translation(pos).with_scale(Vec3::new(0.01, 0.01, 1.0)),
+            Transform::from_translation(pos.extend(layer_z(layer)))
+                .with_scale(Vec3::new(0.01, 0.01, 1.0)),
             Visibility::default(),
             DespawnOnExit(crate::AppState::Playing),
         ))
@@ -330,19 +331,25 @@ pub fn move_spots(
     }
 }
 
-/// Pop in when spawned; the spots matching the current call pulse.
+/// Pop in when spawned; the spots matching the current call pulse and move to the top.
 pub fn animate_spots(
     time: Res<Time>,
     m: Res<Match>,
     mut spots: Query<(&SafeSpot, &mut SpotAge, &mut Transform)>,
 ) {
     let t = time.elapsed_secs();
-    for (spot, mut age, mut transform) in &mut spots {
+    let called = |spot: &SafeSpot| m.phase == Phase::Call && spot.element == m.element;
+
+    // Called spots take the top z bands; otherwise spawn order decides.
+    let mut spots: Vec<_> = spots.iter_mut().collect();
+    spots.sort_by_key(|&(spot, ..)| (called(spot), spot.layer));
+
+    for (rank, (spot, mut age, mut transform)) in spots.into_iter().enumerate() {
         age.0 += time.delta_secs();
         let k = (age.0 / 0.35).min(1.0);
         // Ease-out with a little overshoot.
         let pop = 1.0 + 2.2 * (k - 1.0).powi(3) + 1.2 * (k - 1.0).powi(2);
-        let pulse = if m.phase == Phase::Call && spot.element == m.element {
+        let pulse = if called(spot) {
             1.0 + 0.07 * (t * 10.0).sin()
         } else {
             1.0
@@ -350,5 +357,6 @@ pub fn animate_spots(
         // Leave z unscaled so a spot's parts stay inside its z band.
         let s = (pop * pulse).max(0.01);
         transform.scale = Vec3::new(s, s, 1.0);
+        transform.translation.z = layer_z(rank);
     }
 }
