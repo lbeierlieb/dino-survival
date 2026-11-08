@@ -1,0 +1,28 @@
+[package]
+name = "dino-elements"
+version = "0.1.0"
+edition = "2024"
+description = "Fire, Water, Storm, Lightning: a local multiplayer dinosaur party game"
+
+[dependencies]
+bevy = { version = "0.20", default-features = false, features = ["2d", "ui", "keyboard"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+bevy = { version = "0.20", default-features = false, features = ["web"] }
+
+# Fast-ish debug builds: optimize dependencies, keep our own crate quick to compile.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Used by the Nix wasm package: smaller download at a small runtime cost.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
