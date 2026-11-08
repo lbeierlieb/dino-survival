@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+
+# A new push to the PR cancels the run for the previous one.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      # Bevy for two targets doesn't fit in the runner's default free disk space.
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
+      - run: nix flake check -L
+
+  # When the game itself changes (src/, web/, Cargo.*), the Cargo version must go up.
+  version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The PR merge commit and its first parent, the base branch.
+          fetch-depth: 2
+      - name: Check Cargo version was bumped
+        run: |
+          if ! git diff --name-only HEAD^1 HEAD | grep -qE '^(src/|web/|Cargo\.(toml|lock)$)'; then
+            echo "No changes to src/, web/ or Cargo.*; no version bump needed."
+            exit 0
+          fi
+
+          version() { sed -n 's/^version = "\(.*\)"$/\1/p' | head -n1; }
+          old=$(git show HEAD^1:Cargo.toml | version)
+          new=$(version < Cargo.toml)
+          echo "base: $old, PR: $new"
+
+          highest=$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -n1)
+          if [ "$new" = "$old" ] || [ "$highest" != "$new" ]; then
+            echo "::error file=Cargo.toml::Bump the version in Cargo.toml (currently $new, base branch has $old)."
+            exit 1
+          fi
