@@ -2,6 +2,7 @@
 name = "dino-survival"
 version = "0.1.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
 description = "Fire, Water, Storm, Lightning: a local multiplayer dinosaur party game"
 
 [dependencies]

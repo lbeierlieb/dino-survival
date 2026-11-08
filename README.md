@@ -58,3 +58,12 @@ needs `bevy_dylib` 0.20.1, which isn't published there.
 
 The `wasm-bindgen` crate version in `Cargo.lock` must match the `wasm-bindgen-cli`
 used in `flake.nix` (currently 0.2.130). If you bump one, bump the other.
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
