@@ -165,6 +165,15 @@ fn spawn_lobby(mut commands: Commands) {
                 14.0,
                 TEXT_DIM,
             ));
+            root.spawn((
+                text(concat!("v", env!("CARGO_PKG_VERSION")), 14.0, TEXT_DIM),
+                Node {
+                    position_type: PositionType::Absolute,
+                    right: px(16),
+                    bottom: px(12),
+                    ..default()
+                },
+            ));
         });
 }
 
