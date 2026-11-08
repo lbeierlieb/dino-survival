@@ -100,6 +100,16 @@
           dontFixup = true;
         };
 
+        # Dev shell only: `cargo run` becomes an optimized build with quick incremental
+        # rebuilds (the `release-dev` profile). Other cargo commands pass through.
+        cargo-dev = pkgs.writeShellScriptBin "cargo" ''
+          if [ "''${1:-}" = "run" ]; then
+            shift
+            exec ${toolchain}/bin/cargo run --profile release-dev "$@"
+          fi
+          exec ${toolchain}/bin/cargo "$@"
+        '';
+
         # `nix run .#serve-wasm` serves the wasm build on http://localhost:8080
         serve-wasm = pkgs.writeShellApplication {
           name = "serve-wasm";
@@ -130,6 +140,9 @@
             pkgs.python3
           ] ++ buildLibs ++ runtimeLibs;
           LD_LIBRARY_PATH = lib.makeLibraryPath runtimeLibs;
+          shellHook = ''
+            export PATH=${cargo-dev}/bin:$PATH
+          '';
         };
       });
 }

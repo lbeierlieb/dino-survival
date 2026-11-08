@@ -39,13 +39,20 @@ player's key stops responding while others are pressed, try a different keyboard
 
 ```sh
 nix develop                  # dev shell: Rust (with wasm32 target), wasm-bindgen, binaryen
-cargo run                    # run natively from the dev shell
+cargo run                    # in the dev shell: optimized build, quick incremental rebuilds
 
 nix build .#native           # native binary  -> result/bin/dino-elements
 nix run                      # build and run the native version
 nix build .#wasm             # web build      -> result/{index.html, *.js, *.wasm}
 nix run .#serve-wasm         # serve the web build on http://localhost:8080
 ```
+
+Inside `nix develop`, `cargo run` is wrapped to run `cargo run --profile release-dev`.
+That profile has release optimizations without LTO and with incremental compilation,
+so rebuilds after a change are reasonably quick. Every other cargo command works as usual.
+
+Bevy's `dynamic_linking` feature can't be used with Bevy 0.20 from crates.io: it
+needs `bevy_dylib` 0.20.1, which isn't published there.
 
 The `wasm-bindgen` crate version in `Cargo.lock` must match the `wasm-bindgen-cli`
 used in `flake.nix` (currently 0.2.130). If you bump one, bump the other.

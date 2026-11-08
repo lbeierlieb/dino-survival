@@ -21,6 +21,13 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 
+# `cargo run` in the dev shell: release optimizations without LTO, with fast incremental rebuilds.
+[profile.release-dev]
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
+
 # Used by the Nix wasm package: smaller download at a small runtime cost.
 [profile.wasm-release]
 inherits = "release"
