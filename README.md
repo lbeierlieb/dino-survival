@@ -1,7 +1,7 @@
 # Fire, Water, Storm, Lightning 🦖
 
-A local multiplayer party game for 2–4 players on one keyboard, inspired by the German
-gym game *Feuer, Wasser, Sturm, Blitz*. Built with [Bevy](https://bevy.org) 0.20.
+A local multiplayer party game for 2–4 players on one keyboard, with a solo practice
+mode, inspired by the German gym game *Feuer, Wasser, Sturm, Blitz*. Built with [Bevy](https://bevy.org) 0.20.
 
 ## How to play
 
@@ -30,9 +30,14 @@ The last dino standing wins.
 | RAPTOR | `Numpad 4` / `6` or `-` / `=` |
 
 In the lobby, press one of your keys to join, then `Space`/`Enter` to start.
-With just one player it's a solo practice mode: any time you aren't inside a matching
-spot when the countdown ends, you lose a life.
 `Backspace` clears the players. `Esc` during a game goes back to the lobby.
+
+### Solo practice
+
+Join with just one player to practice on your own. The rules are the same, except
+that there's nobody to be furthest away: whenever you aren't inside a matching spot
+when the countdown ends, you lose a life. When your last life is gone, the game shows
+how many rounds you reached.
 
 Note: some keyboards can't register many keys held at once ("ghosting"). If a
 player's key stops responding while others are pressed, try a different keyboard.
