@@ -59,7 +59,10 @@ pub fn spawn_spots(
         } else {
             Vec2::ZERO
         };
-        spawn_spot(commands, assets, materials, element, pos, velocity);
+        // Each spot gets its own z band (its parts span local z 0.0..=0.5), so overlapping
+        // spots draw one on top of the other instead of interleaving. All stay below the dinos.
+        let z = 0.5 + i as f32 * 0.55;
+        spawn_spot(commands, assets, materials, element, pos.extend(z), velocity);
     }
 }
 
@@ -68,7 +71,7 @@ fn spawn_spot(
     assets: &GameAssets,
     materials: &mut Assets<ColorMaterial>,
     element: Element,
-    pos: Vec2,
+    pos: Vec3,
     velocity: Vec2,
 ) {
     let r = SPOT_RADIUS;
@@ -78,7 +81,7 @@ fn spawn_spot(
         .spawn((
             SafeSpot { element, radius: r, velocity },
             SpotAge::default(),
-            Transform::from_translation(pos.extend(1.0)).with_scale(Vec3::splat(0.01)),
+            Transform::from_translation(pos).with_scale(Vec3::new(0.01, 0.01, 1.0)),
             Visibility::default(),
             DespawnOnExit(crate::AppState::Playing),
         ))
@@ -188,6 +191,8 @@ pub fn animate_spots(time: Res<Time>, m: Res<Match>, mut spots: Query<(&SafeSpot
         } else {
             1.0
         };
-        transform.scale = Vec3::splat((pop * pulse).max(0.01));
+        // Leave z unscaled so a spot's parts stay inside its z band.
+        let s = (pop * pulse).max(0.01);
+        transform.scale = Vec3::new(s, s, 1.0);
     }
 }
